@@ -87,6 +87,14 @@
   .entry-row .e-del { background: transparent; color: var(--danger); padding: 4px 8px; font-size: 0.82rem; }
   .entry-row .e-del:hover { text-decoration: underline; filter: none; }
   canvas { max-height: 280px; }
+  .ranges { display: flex; gap: 8px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
+  .ranges button {
+    background: transparent; color: var(--muted); border: 1px solid var(--border);
+    padding: 8px 14px; font-size: 0.85rem; font-weight: 600; border-radius: 8px;
+  }
+  .ranges button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .who-row { margin-bottom: 10px; }
+  .who-row select { max-width: 100%; }
 </style>
 </head>
 <body>
@@ -133,15 +141,23 @@
       <div class="note" id="trackNote"></div>
     </div>
 
+    <div class="card" id="chartCard" style="display:none;">
+      <h2>Progress toward the goal (% change from start weight)</h2>
+      <canvas id="progressChart"></canvas>
+      <div class="ranges" id="ranges">
+        <button data-r="week">1 wk</button>
+        <button data-r="month">1 mo</button>
+        <button data-r="challenge" class="active">Challenge</button>
+        <button data-r="all">All</button>
+      </div>
+      <div class="note" id="chartNote">Everyone starts at 0% on their first weigh-in. The red line is the goal (−5%).</div>
+    </div>
+
     <div class="card" id="lbCard" style="display:none;">
       <h2>Leaderboard — current weight &amp; % lost</h2>
       <div id="lbList"></div>
     </div>
 
-    <div class="card" id="chartCard" style="display:none;">
-      <h2>Progress vs. goal pace</h2>
-      <canvas id="progressChart"></canvas>
-    </div>
   </div>
 
   <div class="status" id="globalStatus">Connecting…</div>
@@ -193,6 +209,7 @@ let db = null;
 let allDocs = {};
 let myName = lsGet('wlc_name') || '';
 let chart = null;
+let chartRange = 'challenge';
 let unitInitialized = false;
 
 function myId() { return slug(myName); }
@@ -309,40 +326,69 @@ function renderLeaderboard() {
   }).join('');
 }
 
+function fmtSigned(v) {
+  const r = Math.round(v * 10) / 10;
+  return (r > 0 ? '+' : (r < 0 ? '\u2212' : '')) + Math.abs(r).toFixed(1) + '%';
+}
+
 function renderChart() {
   const people = getPeople().filter(function(p) { return p.entries.length > 0; });
   if (!people.length || typeof Chart === 'undefined') { $('chartCard').style.display = 'none'; return; }
   try {
-    let minD = START, maxD = END;
-    people.forEach(function(p) { p.entries.forEach(function(e) {
-      if (e.date < minD) minD = e.date;
-      if (e.date > maxD) maxD = e.date;
-    }); });
+    document.querySelectorAll('#ranges button').forEach(function(b) {
+      b.classList.toggle('active', b.getAttribute('data-r') === chartRange);
+    });
+
+    let first = people[0].entries[0].date, last = first;
+    people.forEach(function(p) {
+      if (p.entries[0].date < first) first = p.entries[0].date;
+      const l = p.entries[p.entries.length - 1].date;
+      if (l > last) last = l;
+    });
+    const today = todayStr();
+    const anchor = last > today ? last : today;
+    let from, to;
+    if (chartRange === 'week') { to = anchor; from = addDays(anchor, -7); }
+    else if (chartRange === 'month') { to = anchor; from = addDays(anchor, -30); }
+    else if (chartRange === 'all') { from = first; to = last; }
+    else { from = START; to = END; }
+    if (to < from) to = from;
+    if (daysBetween(from, to) < 6) to = addDays(from, 6);
+
     const labels = [];
-    for (let d = minD, n = 0; d <= maxD && n < 400; d = addDays(d, 1), n++) labels.push(d);
+    for (let d = from, n = 0; d <= to && n < 400; d = addDays(d, 1), n++) labels.push(d);
     const idx = {};
     labels.forEach(function(d, i) { idx[d] = i; });
 
+    // Everyone's baseline is their own first weigh-in, so every line starts at 0%.
     const colorOrder = people.map(function(p) { return p.id; }).sort();
     const datasets = people.map(function(p) {
       const start = p.entries[0].weight;
       const data = new Array(labels.length).fill(null);
-      p.entries.forEach(function(e) { data[idx[e.date]] = ((start - e.weight) / start) * 100; });
+      p.entries.forEach(function(e) {
+        if (idx[e.date] !== undefined) data[idx[e.date]] = ((e.weight - start) / start) * 100;
+      });
       const c = COLORS[colorOrder.indexOf(p.id) % COLORS.length];
       const isYou = p.id === myId();
       return { label: isYou ? p.name + ' (you)' : p.name, data: data, borderColor: c, backgroundColor: c,
-        borderWidth: isYou ? 3 : 2, tension: 0.25, pointRadius: 4, pointHoverRadius: 6, spanGaps: true };
+        borderWidth: isYou ? 4 : 3, tension: 0.2, pointRadius: 5, pointHoverRadius: 7, spanGaps: true };
     });
     const total = Math.max(1, daysBetween(START, END));
     datasets.push({
-      label: 'Goal pace (' + GOAL_PCT + '% by ' + shortDate(END) + ')',
-      data: labels.map(function(d) { return Math.max(0, Math.min(1, daysBetween(START, d) / total)) * GOAL_PCT; }),
+      label: 'Goal pace',
+      data: labels.map(function(d) { return -Math.max(0, Math.min(1, daysBetween(START, d) / total)) * GOAL_PCT; }),
       borderColor: 'rgba(150,150,150,0.75)', backgroundColor: 'rgba(150,150,150,0.75)',
       borderWidth: 2, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, tension: 0, fill: false
     });
+    datasets.push({
+      label: 'Goal (\u2212' + GOAL_PCT + '%)',
+      data: labels.map(function() { return -GOAL_PCT; }),
+      borderColor: '#c0392b', backgroundColor: '#c0392b',
+      borderWidth: 2, borderDash: [3, 5], pointRadius: 0, pointHoverRadius: 0, tension: 0, fill: false
+    });
 
     const nice = labels.map(shortDate);
-    const every = Math.max(1, Math.ceil(labels.length / 8));
+    const every = Math.max(1, Math.ceil(labels.length / 7));
     const cs = getComputedStyle(document.documentElement);
     const textColor = cs.getPropertyValue('--text').trim() || '#000';
     const gridColor = cs.getPropertyValue('--border').trim() || '#ddd';
@@ -355,15 +401,26 @@ function renderChart() {
       options: {
         responsive: true,
         color: textColor,
+        interaction: { mode: 'nearest', axis: 'x', intersect: false },
         scales: {
           x: { ticks: { color: textColor, autoSkip: false, maxRotation: 0,
                 callback: function(v, i) { return i % every === 0 ? nice[i] : ''; } },
                grid: { color: gridColor } },
-          y: { ticks: { color: textColor, callback: function(v) { return v + '%'; } },
+          y: { suggestedMin: -(GOAL_PCT + 0.5), suggestedMax: 0.5,
+               ticks: { color: textColor, callback: function(v) { return (Math.round(v * 10) / 10) + '%'; } },
                grid: { color: gridColor },
-               title: { display: true, text: '% of body weight lost', color: textColor } }
+               title: { display: true, text: '% change from start weight', color: textColor } }
         },
-        plugins: { legend: { labels: { color: textColor } } }
+        plugins: {
+          legend: { labels: { color: textColor } },
+          tooltip: {
+            filter: function(item) { return item.datasetIndex < people.length; },
+            callbacks: {
+              title: function(items) { return items.length ? niceDate(labels[items[0].dataIndex]) : ''; },
+              label: function(c) { return c.dataset.label + ': ' + fmtSigned(c.parsed.y); }
+            }
+          }
+        }
       }
     });
   } catch (e) {
@@ -454,6 +511,12 @@ function join() {
 }
 
 $('entryDate').value = todayStr();
+$('ranges').addEventListener('click', function(e) {
+  const b = e.target.closest ? e.target.closest('button') : null;
+  if (!b) return;
+  chartRange = b.getAttribute('data-r');
+  renderChart();
+});
 $('nameBtn').addEventListener('click', join);
 $('nameInput').addEventListener('keydown', function(e) { if (e.key === 'Enter') join(); });
 $('logBtn').addEventListener('click', logWeight);
