@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Weight Challenge">
+<title>Weight Loss Challenge</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏋️</text></svg>">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f6f5f2; --card: #ffffff; --text: #1c1b1a; --muted: #6b6963;
+    --border: #e6e3dc; --accent: #2f6f4f; --accent-2: #d98c3f; --danger: #b5432f;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
+    --radius: 14px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17181a; --card: #212226; --text: #edeceb; --muted: #97958f;
+      --border: #34353a; --accent: #5fbf8c; --accent-2: #e6a35c; --danger: #e0705a;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text); font-family: var(--font);
+    padding: 20px 14px 60px; -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin: 4px 0 2px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 18px; }
+  .sub a { color: var(--accent); cursor: pointer; text-decoration: underline; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 18px; margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted); margin: 0 0 12px;
+  }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 4px; }
+  input, select {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 9px 10px; font-size: 16px; font-family: var(--font);
+  }
+  input[type="number"] { width: 110px; }
+  input[type="date"] { width: 160px; }
+  input[type="text"] { width: 100%; margin-bottom: 12px; }
+  button {
+    background: var(--accent); color: white; border: none; border-radius: 8px;
+    padding: 11px 18px; font-size: 0.95rem; font-weight: 600; cursor: pointer; font-family: var(--font);
+  }
+  button:hover { filter: brightness(1.06); }
+  .goal-banner {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: white;
+    border-radius: var(--radius); padding: 16px 18px; margin-bottom: 16px; box-shadow: var(--shadow);
+  }
+  .goal-banner .g-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 2px; }
+  .goal-banner .g-sub { font-size: 0.82rem; opacity: 0.92; }
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .stat { text-align: center; padding: 10px 4px; border-radius: 10px; background: var(--bg); }
+  .stat .v { font-size: 1.25rem; font-weight: 700; }
+  .stat .l { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+  .track { height: 10px; background: var(--bg); border-radius: 6px; overflow: hidden; margin-top: 12px; }
+  .track .fill { height: 100%; background: var(--accent); border-radius: 6px; width: 0; }
+  .note { font-size: 0.76rem; color: var(--muted); margin-top: 6px; }
+  .lb-row { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--border); }
+  .lb-row:last-child { border-bottom: none; }
+  .lb-rank { width: 20px; font-weight: 700; color: var(--muted); font-size: 0.85rem; }
+  .lb-name { flex: 1; font-weight: 600; font-size: 0.92rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lb-name .you { color: var(--accent); }
+  .lb-weight { width: 72px; text-align: right; font-size: 0.8rem; color: var(--muted); }
+  .lb-bar-wrap { width: 60px; background: var(--bg); border-radius: 6px; height: 8px; overflow: hidden; }
+  .lb-bar { height: 100%; border-radius: 6px; }
+  .lb-pct { width: 54px; text-align: right; font-weight: 700; font-size: 0.88rem; }
+  .empty { color: var(--muted); font-size: 0.88rem; padding: 6px 0; }
+  .status { font-size: 0.8rem; color: var(--muted); margin-top: 10px; min-height: 1em; }
+  .status.err { color: var(--danger); }
+  .entry-row { display: flex; align-items: center; gap: 10px; padding: 7px 2px; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+  .entry-row:last-child { border-bottom: none; }
+  .entry-row .e-date { color: var(--muted); width: 110px; }
+  .entry-row .e-weight { flex: 1; font-weight: 600; }
+  .entry-row .e-del { background: transparent; color: var(--danger); padding: 4px 8px; font-size: 0.82rem; }
+  .entry-row .e-del:hover { text-decoration: underline; filter: none; }
+  canvas { max-height: 280px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🏋️ Weight Loss Challenge</h1>
+  <div class="sub" id="subtitle"></div>
+
+  <div class="card" id="nameCard" style="display:none;">
+    <h2>Join the challenge</h2>
+    <label for="nameInput">Your name</label>
+    <input id="nameInput" type="text" maxlength="24" placeholder="e.g. Satoru" autocomplete="off">
+    <button id="nameBtn">Join</button>
+    <div class="note">Use the same name on every device and you'll always see your own entries.</div>
+  </div>
+
+  <div id="app" style="display:none;">
+    <div class="goal-banner">
+      <div class="g-title" id="goalTitle"></div>
+      <div class="g-sub" id="goalSub"></div>
+    </div>
+
+    <div class="card">
+      <h2>Log your weigh-in</h2>
+      <div class="row">
+        <div><label for="entryDate">Date</label><input id="entryDate" type="date"></div>
+        <div><label for="entryWeight">Weight</label><input id="entryWeight" type="number" step="0.1" min="0" inputmode="decimal" placeholder="0.0"></div>
+        <div><label for="entryUnit">Unit</label>
+          <select id="entryUnit"><option value="lb">lb</option><option value="kg">kg</option></select>
+        </div>
+        <button id="logBtn">Log weight</button>
+      </div>
+      <div class="status" id="logStatus"></div>
+      <div id="myEntries" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="card" id="statsCard" style="display:none;">
+      <h2>Your progress</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="v" id="statStart">–</div><div class="l">Start</div></div>
+        <div class="stat"><div class="v" id="statCurrent">–</div><div class="l">Current</div></div>
+        <div class="stat"><div class="v" id="statPct">–</div><div class="l">% lost</div></div>
+      </div>
+      <div class="track"><div class="fill" id="trackFill"></div></div>
+      <div class="note" id="trackNote"></div>
+    </div>
+
+    <div class="card" id="lbCard" style="display:none;">
+      <h2>Leaderboard — current weight &amp; % lost</h2>
+      <div id="lbList"></div>
+    </div>
+
+    <div class="card" id="chartCard" style="display:none;">
+      <h2>Progress vs. goal pace</h2>
+      <canvas id="progressChart"></canvas>
+    </div>
+  </div>
+
+  <div class="status" id="globalStatus">Connecting…</div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getFirestore, doc, setDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAowaxTXas2FXEgpYE7RyPERbb2tsZuQPc",
+  authDomain: "weight-loss-challenge-54fad.firebaseapp.com",
+  projectId: "weight-loss-challenge-54fad",
+  storageBucket: "weight-loss-challenge-54fad.firebasestorage.app",
+  messagingSenderId: "36583972216",
+  appId: "1:36583972216:web:4ae23344ec86df8500bc8d"
+};
+
+// ---- Challenge settings (edit these to change the challenge) ----
+const GOAL_PCT = 5;
+const START = '2026-09-18';
+const END = '2026-11-18';
+// -----------------------------------------------------------------
+
+const COLORS = ['#2f6f4f', '#d98c3f', '#4a6fa5', '#b5432f', '#8a5fb0', '#c9a227'];
+const $ = function(id) { return document.getElementById(id); };
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function fmtLocal(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function parseLocal(s) { const p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+function addDays(s, n) { const d = parseLocal(s); d.setDate(d.getDate() + n); return fmtLocal(d); }
+function daysBetween(a, b) { return Math.round((parseLocal(b) - parseLocal(a)) / 86400000); }
+function todayStr() { return fmtLocal(new Date()); }
+function niceDate(s) { return parseLocal(s).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); }
+function shortDate(s) { return parseLocal(s).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
+function slug(n) { return n.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'player'; }
+
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
+let db = null;
+let allDocs = {};
+let myName = lsGet('wlc_name') || '';
+let chart = null;
+let unitInitialized = false;
+
+function myId() { return slug(myName); }
+function setStatus(el, msg, isErr) {
+  el.textContent = msg;
+  el.className = 'status' + (isErr ? ' err' : '');
+}
+
+try {
+  db = getFirestore(initializeApp(firebaseConfig));
+} catch (e) {
+  setStatus($('globalStatus'), 'Could not start Firebase: ' + e.message, true);
+}
+
+// ---------- data helpers ----------
+function cleanEntries(arr) {
+  return (arr || []).filter(function(e) {
+    return e && typeof e.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.date) && typeof e.weight === 'number' && e.weight > 0;
+  }).sort(function(a, b) { return a.date.localeCompare(b.date); });
+}
+function pctLost(entries) {
+  if (entries.length < 2) return null;
+  const start = entries[0].weight;
+  const latest = entries[entries.length - 1].weight;
+  return ((start - latest) / start) * 100;
+}
+function getPeople() {
+  return Object.keys(allDocs).map(function(id) {
+    const d = allDocs[id] || {};
+    const entries = cleanEntries(d.entries);
+    return { id: id, name: d.name || 'Someone', unit: d.unit || 'lb', entries: entries, pct: pctLost(entries) };
+  });
+}
+function getMine() {
+  const found = getPeople().filter(function(p) { return p.id === myId(); })[0];
+  return found || { id: myId(), name: myName, unit: 'lb', entries: [], pct: null };
+}
+function pctText(p) {
+  if (p == null) return '–';
+  return p >= 0 ? p.toFixed(1) + '%' : '+' + Math.abs(p).toFixed(1) + '%';
+}
+
+async function saveMine(entries, unit) {
+  if (!db) throw new Error('Firebase is not available');
+  const write = setDoc(doc(db, 'entries', myId()), { name: myName, unit: unit, entries: entries });
+  const timeout = new Promise(function(resolve) { setTimeout(function() { resolve('slow'); }, 8000); });
+  return Promise.race([write, timeout]);
+}
+
+// ---------- rendering ----------
+function renderBanner() {
+  $('goalTitle').textContent = '🎯 Lose ' + GOAL_PCT + '% by ' + niceDate(END);
+  const t = todayStr();
+  let sub;
+  if (t < START) sub = 'Starts ' + niceDate(START) + ' — ' + daysBetween(START, END) + ' day challenge.';
+  else {
+    const left = daysBetween(t, END);
+    sub = left > 0 ? left + ' day' + (left === 1 ? '' : 's') + ' left.' : 'Challenge complete!';
+  }
+  $('goalSub').textContent = sub;
+}
+
+function renderMine() {
+  const me = getMine();
+  const list = $('myEntries');
+  if (!me.entries.length) {
+    $('statsCard').style.display = 'none';
+    list.innerHTML = '';
+    return;
+  }
+  const desc = me.entries.slice().reverse();
+  list.innerHTML = desc.map(function(e) {
+    return '<div class="entry-row"><div class="e-date">' + esc(niceDate(e.date)) + '</div>' +
+      '<div class="e-weight">' + e.weight.toFixed(1) + ' ' + esc(me.unit) + '</div>' +
+      '<button class="e-del" data-date="' + esc(e.date) + '">Delete</button></div>';
+  }).join('');
+
+  $('statsCard').style.display = '';
+  $('statStart').textContent = me.entries[0].weight.toFixed(1) + ' ' + me.unit;
+  $('statCurrent').textContent = me.entries[me.entries.length - 1].weight.toFixed(1) + ' ' + me.unit;
+  $('statPct').textContent = pctText(me.pct);
+  $('statPct').style.color = me.pct == null ? 'inherit' : (me.pct >= 0 ? 'var(--accent)' : 'var(--danger)');
+  const p = me.pct == null ? 0 : me.pct;
+  const ratio = Math.max(0, Math.min(1, p / GOAL_PCT));
+  $('trackFill').style.width = (ratio * 100) + '%';
+  $('trackFill').style.background = p >= GOAL_PCT ? 'var(--accent-2)' : 'var(--accent)';
+  $('trackNote').textContent = p >= GOAL_PCT
+    ? '🎉 Goal reached — ' + p.toFixed(1) + '% of ' + GOAL_PCT + '%'
+    : (me.pct == null ? 'Log a second weigh-in to see your % lost.' : Math.max(0, p).toFixed(1) + '% of ' + GOAL_PCT + '% goal');
+}
+
+function renderLeaderboard() {
+  const people = getPeople().filter(function(p) { return p.entries.length > 0; });
+  if (!people.length) { $('lbCard').style.display = 'none'; return; }
+  $('lbCard').style.display = '';
+  people.sort(function(a, b) {
+    const pa = a.pct == null ? -Infinity : a.pct;
+    const pb = b.pct == null ? -Infinity : b.pct;
+    if (pb !== pa) return pb - pa;
+    return a.name.localeCompare(b.name);
+  });
+  const medals = ['🥇', '🥈', '🥉'];
+  $('lbList').innerHTML = people.map(function(p, i) {
+    const isYou = p.id === myId();
+    const cur = p.entries[p.entries.length - 1].weight;
+    const val = p.pct == null ? 0 : p.pct;
+    const width = Math.max(2, Math.min(100, (Math.max(0, val) / GOAL_PCT) * 100));
+    const color = val >= 0 ? 'var(--accent)' : 'var(--danger)';
+    return '<div class="lb-row"><div class="lb-rank">' + (i + 1) + '</div>' +
+      '<div class="lb-name">' + (isYou ? '<span class="you">' + esc(p.name) + ' (you)</span>' : esc(p.name)) + (medals[i] && people.length > 1 ? ' ' + medals[i] : '') + '</div>' +
+      '<div class="lb-weight">' + cur.toFixed(1) + ' ' + esc(p.unit) + '</div>' +
+      '<div class="lb-bar-wrap"><div class="lb-bar" style="width:' + width + '%;background:' + color + ';"></div></div>' +
+      '<div class="lb-pct">' + pctText(p.pct) + '</div></div>';
+  }).join('');
+}
+
+function renderChart() {
+  const people = getPeople().filter(function(p) { return p.entries.length > 0; });
+  if (!people.length || typeof Chart === 'undefined') { $('chartCard').style.display = 'none'; return; }
+  try {
+    let minD = START, maxD = END;
+    people.forEach(function(p) { p.entries.forEach(function(e) {
+      if (e.date < minD) minD = e.date;
+      if (e.date > maxD) maxD = e.date;
+    }); });
+    const labels = [];
+    for (let d = minD, n = 0; d <= maxD && n < 400; d = addDays(d, 1), n++) labels.push(d);
+    const idx = {};
+    labels.forEach(function(d, i) { idx[d] = i; });
+
+    const colorOrder = people.map(function(p) { return p.id; }).sort();
+    const datasets = people.map(function(p) {
+      const start = p.entries[0].weight;
+      const data = new Array(labels.length).fill(null);
+      p.entries.forEach(function(e) { data[idx[e.date]] = ((start - e.weight) / start) * 100; });
+      const c = COLORS[colorOrder.indexOf(p.id) % COLORS.length];
+      const isYou = p.id === myId();
+      return { label: isYou ? p.name + ' (you)' : p.name, data: data, borderColor: c, backgroundColor: c,
+        borderWidth: isYou ? 3 : 2, tension: 0.25, pointRadius: 4, pointHoverRadius: 6, spanGaps: true };
+    });
+    const total = Math.max(1, daysBetween(START, END));
+    datasets.push({
+      label: 'Goal pace (' + GOAL_PCT + '% by ' + shortDate(END) + ')',
+      data: labels.map(function(d) { return Math.max(0, Math.min(1, daysBetween(START, d) / total)) * GOAL_PCT; }),
+      borderColor: 'rgba(150,150,150,0.75)', backgroundColor: 'rgba(150,150,150,0.75)',
+      borderWidth: 2, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, tension: 0, fill: false
+    });
+
+    const nice = labels.map(shortDate);
+    const every = Math.max(1, Math.ceil(labels.length / 8));
+    const cs = getComputedStyle(document.documentElement);
+    const textColor = cs.getPropertyValue('--text').trim() || '#000';
+    const gridColor = cs.getPropertyValue('--border').trim() || '#ddd';
+
+    $('chartCard').style.display = '';
+    if (chart) chart.destroy();
+    chart = new Chart($('progressChart').getContext('2d'), {
+      type: 'line',
+      data: { labels: nice, datasets: datasets },
+      options: {
+        responsive: true,
+        color: textColor,
+        scales: {
+          x: { ticks: { color: textColor, autoSkip: false, maxRotation: 0,
+                callback: function(v, i) { return i % every === 0 ? nice[i] : ''; } },
+               grid: { color: gridColor } },
+          y: { ticks: { color: textColor, callback: function(v) { return v + '%'; } },
+               grid: { color: gridColor },
+               title: { display: true, text: '% of body weight lost', color: textColor } }
+        },
+        plugins: { legend: { labels: { color: textColor } } }
+      }
+    });
+  } catch (e) {
+    $('chartCard').style.display = 'none';
+  }
+}
+
+function render() {
+  renderBanner();
+  renderMine();
+  renderLeaderboard();
+  renderChart();
+}
+
+// ---------- actions ----------
+async function logWeight() {
+  const w = parseFloat($('entryWeight').value);
+  const date = $('entryDate').value || todayStr();
+  const unit = $('entryUnit').value;
+  const status = $('logStatus');
+  if (!w || w <= 0 || w > 1500) { setStatus(status, 'Enter a valid weight.', true); return; }
+  const mine = getMine();
+  const entries = mine.entries.slice();
+  const i = entries.findIndex(function(e) { return e.date === date; });
+  if (i >= 0) entries[i] = { date: date, weight: w }; else entries.push({ date: date, weight: w });
+  $('entryWeight').value = '';
+  setStatus(status, 'Saving…', false);
+  try {
+    const r = await saveMine(cleanEntries(entries), unit);
+    setStatus(status, r === 'slow' ? 'Saved on this device — waiting for connection…' : 'Logged ✓', false);
+  } catch (e) {
+    setStatus(status, 'Could not save (' + (e.code || e.message) + '). Check the Firestore rules are published.', true);
+  }
+}
+
+async function deleteEntry(date) {
+  const mine = getMine();
+  const entries = mine.entries.filter(function(e) { return e.date !== date; });
+  setStatus($('logStatus'), 'Deleting…', false);
+  try {
+    await saveMine(entries, mine.unit);
+    setStatus($('logStatus'), 'Deleted ✓', false);
+  } catch (e) {
+    setStatus($('logStatus'), 'Could not delete (' + (e.code || e.message) + ').', true);
+  }
+}
+
+function subscribe() {
+  if (!db) return;
+  onSnapshot(collection(db, 'entries'), function(snap) {
+    const next = {};
+    snap.forEach(function(d) { next[d.id] = d.data(); });
+    allDocs = next;
+    if (!unitInitialized && allDocs[myId()] && allDocs[myId()].unit) {
+      $('entryUnit').value = allDocs[myId()].unit;
+      unitInitialized = true;
+    }
+    setStatus($('globalStatus'), 'Live ✓ — updates from everyone appear automatically.', false);
+    render();
+  }, function(err) {
+    setStatus($('globalStatus'), 'Can\'t reach the database (' + (err && err.code || 'error') + '). Make sure Firestore is created and the rules are published.', true);
+  });
+}
+
+function showApp() {
+  $('nameCard').style.display = 'none';
+  $('app').style.display = '';
+  $('subtitle').innerHTML = 'Playing as <b>' + esc(myName) + '</b> · <a id="switchName">not you?</a>';
+  $('switchName').addEventListener('click', function() {
+    lsDel('wlc_name');
+    myName = '';
+    unitInitialized = false;
+    $('app').style.display = 'none';
+    $('subtitle').textContent = '';
+    $('nameCard').style.display = '';
+    $('nameInput').focus();
+  });
+  unitInitialized = false;
+  render();
+}
+
+function join() {
+  const n = $('nameInput').value.trim();
+  if (!n) return;
+  myName = n;
+  lsSet('wlc_name', myName);
+  showApp();
+}
+
+$('entryDate').value = todayStr();
+$('nameBtn').addEventListener('click', join);
+$('nameInput').addEventListener('keydown', function(e) { if (e.key === 'Enter') join(); });
+$('logBtn').addEventListener('click', logWeight);
+$('myEntries').addEventListener('click', function(e) {
+  const btn = e.target.closest ? e.target.closest('.e-del') : null;
+  if (btn) deleteEntry(btn.getAttribute('data-date'));
+});
+
+subscribe();
+if (myName) showApp(); else $('nameCard').style.display = '';
+</script>
+</body>
+</html>
