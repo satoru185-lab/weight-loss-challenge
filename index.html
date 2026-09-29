@@ -141,6 +141,11 @@
       <div class="note" id="trackNote"></div>
     </div>
 
+    <div class="card" id="lbCard" style="display:none;">
+      <h2>Leaderboard — current weight &amp; % lost</h2>
+      <div id="lbList"></div>
+    </div>
+
     <div class="card" id="chartCard" style="display:none;">
       <h2>Progress toward the goal (% change from start weight)</h2>
       <canvas id="progressChart"></canvas>
@@ -151,11 +156,6 @@
         <button data-r="all">All</button>
       </div>
       <div class="note" id="chartNote">Everyone starts at 0% on their first weigh-in. The red line is the goal (−5%).</div>
-    </div>
-
-    <div class="card" id="lbCard" style="display:none;">
-      <h2>Leaderboard — current weight &amp; % lost</h2>
-      <div id="lbList"></div>
     </div>
 
   </div>
@@ -333,7 +333,16 @@ function fmtSigned(v) {
 
 function renderChart() {
   const people = getPeople().filter(function(p) { return p.entries.length > 0; });
-  if (!people.length || typeof Chart === 'undefined') { $('chartCard').style.display = 'none'; return; }
+  if (!people.length) { $('chartCard').style.display = 'none'; return; }
+  if (typeof Chart === 'undefined') {
+    $('chartCard').style.display = '';
+    $('progressChart').style.display = 'none';
+    $('ranges').style.display = 'none';
+    $('chartNote').textContent = 'Chart library failed to load (often an ad-blocker or privacy setting blocking cdnjs.cloudflare.com). Try disabling it for this page, or use a different browser.';
+    return;
+  }
+  $('progressChart').style.display = '';
+  $('ranges').style.display = '';
   try {
     document.querySelectorAll('#ranges button').forEach(function(b) {
       b.classList.toggle('active', b.getAttribute('data-r') === chartRange);
@@ -424,7 +433,10 @@ function renderChart() {
       }
     });
   } catch (e) {
-    $('chartCard').style.display = 'none';
+    $('chartCard').style.display = '';
+    $('progressChart').style.display = 'none';
+    $('ranges').style.display = 'none';
+    $('chartNote').textContent = 'Chart failed to render: ' + e.message;
   }
 }
 
