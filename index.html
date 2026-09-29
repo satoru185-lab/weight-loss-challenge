@@ -127,18 +127,19 @@
         <button id="logBtn">Log weight</button>
       </div>
       <div class="status" id="logStatus"></div>
-      <div id="myEntries" style="margin-top:8px;"></div>
     </div>
 
     <div class="card" id="statsCard" style="display:none;">
       <h2>Your progress</h2>
-      <div class="stat-grid">
+      <div class="stat-grid" id="statsToggle" style="cursor:pointer;">
         <div class="stat"><div class="v" id="statStart">–</div><div class="l">Start</div></div>
         <div class="stat"><div class="v" id="statCurrent">–</div><div class="l">Current</div></div>
         <div class="stat"><div class="v" id="statPct">–</div><div class="l">% lost</div></div>
       </div>
       <div class="track"><div class="fill" id="trackFill"></div></div>
       <div class="note" id="trackNote"></div>
+      <div class="note" id="historyLabel" style="cursor:pointer;margin-top:10px;">History ▾</div>
+      <div id="myEntries" style="display:none;margin-top:6px;"></div>
     </div>
 
     <div class="card" id="lbCard" style="display:none;">
@@ -277,9 +278,11 @@ function renderMine() {
   const list = $('myEntries');
   if (!me.entries.length) {
     $('statsCard').style.display = 'none';
+    $('historyLabel').style.display = 'none';
     list.innerHTML = '';
     return;
   }
+  $('historyLabel').style.display = '';
   const desc = me.entries.slice().reverse();
   list.innerHTML = desc.map(function(e) {
     return '<div class="entry-row"><div class="e-date">' + esc(niceDate(e.date)) + '</div>' +
@@ -536,6 +539,13 @@ $('myEntries').addEventListener('click', function(e) {
   const btn = e.target.closest ? e.target.closest('.e-del') : null;
   if (btn) deleteEntry(btn.getAttribute('data-date'));
 });
+function toggleHistory() {
+  const open = $('myEntries').style.display !== 'none';
+  $('myEntries').style.display = open ? 'none' : '';
+  $('historyLabel').textContent = open ? 'History ▾' : 'History ▴';
+}
+$('historyLabel').addEventListener('click', toggleHistory);
+$('statsToggle').addEventListener('click', toggleHistory);
 
 subscribe();
 if (myName) showApp(); else $('nameCard').style.display = '';
