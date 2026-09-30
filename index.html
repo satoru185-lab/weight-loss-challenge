@@ -10,6 +10,16 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <script>
+  window.addEventListener('load', function() {
+    if (typeof Chart === 'undefined') {
+      var s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js';
+      s.onload = function() { if (window.__wlcRenderChart) window.__wlcRenderChart(); };
+      document.head.appendChild(s);
+    }
+  });
+</script>
+<script>
   if (typeof Chart === 'undefined') {
     document.write('<scr' + 'ipt src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></scr' + 'ipt>');
   }
@@ -388,7 +398,7 @@ function renderChart() {
       const c = COLORS[colorOrder.indexOf(p.id) % COLORS.length];
       const isYou = p.id === myId();
       return { label: isYou ? p.name + ' (you)' : p.name, data: data, borderColor: c, backgroundColor: c,
-        borderWidth: isYou ? 4 : 3, tension: 0.2, pointRadius: 5, pointHoverRadius: 7, spanGaps: true };
+        borderWidth: isYou ? 3 : 2, tension: 0.2, pointRadius: 2, pointHoverRadius: 4, spanGaps: true };
     });
     const total = Math.max(1, daysBetween(START, END));
     datasets.push({
@@ -554,6 +564,7 @@ $('statsToggle').addEventListener('click', toggleHistory);
 
 subscribe();
 if (myName) showApp(); else $('nameCard').style.display = '';
+window.__wlcRenderChart = render;
 </script>
 </body>
 </html>
